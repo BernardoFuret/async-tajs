@@ -2,6 +2,8 @@
 
 - **TAJS_NOT_IMPLEMENTED**() -> void:
     - Placeholder for not-implemented function. Throws AnalysisModelLimitationException if called.
+- **TAJS_addAsyncIOCallback**(TODO) -> void:
+    - TODO.
 - **TAJS_addContextSensitivity**(Function|String targetFunctionOrTargetParameterName, [String targetParameterName]) -> void:
     - Makes the given or enclosing function context sensitive in the given parameter name.
 - **TAJS_assert**(Value value, [String predicateNameString = 'isMaybeTrueButNotFalse'], [Boolean expectedResult = true], [Boolean mustBeReachable = true]) -> void:
@@ -24,12 +26,16 @@
     - Prints the objects in the given abstract value.
 - **TAJS_dumpPrototype**(Value value) -> void:
     - Prints the prototypes of the given abstract value.
+- **TAJS_dumpQueue**() -> void:
+    - Prints the objects placed in the queue.
 - **TAJS_dumpState**() -> void:
     - Prints the current abstract state.
 - **TAJS_dumpValue**(Value value) -> void:
     - Prints the given abstract value.
 - **TAJS_firstOrderStringReplace**(Value receiver, Value toReplace, Value toReplaceWith) -> Value:
     - Implementation of the ECMAScript function String.prototype.replace, without support for a function callback.
+- **TAJS_fulfilledWith**(Queue object, Value fulfilled value) -> void:
+    - Asserts that the object is in the queue and it is fulfilled with the given value.
 - **TAJS_getAjaxEvent**() -> EventObject:
     - Returns a ReadyStateEvent object.
 - **TAJS_getEventListener**() -> EventObject:
@@ -44,6 +50,8 @@
     - Returns an UIEvent object.
 - **TAJS_getWheelEvent**() -> EventObject:
     - Returns a WheelEvent object.
+- **TAJS_hasTimerCallback**(String timer, Value callback) -> void:
+    - Asserts that the given timer has registeredthe specified callback.
 - **TAJS_join**(Value ... values) -> Value:
     - Joins the given abstract values into a single abstract value.
 - **TAJS_load**(String file, Boolean isHostEnvironment, String ... parameterNames) -> Function:
@@ -54,6 +62,8 @@
     - Creates an abstract value. The value is created by reflectively invoking the `'make' + partialMethodName`-method of the Value class.
 - **TAJS_makeContextSensitive**(Value targetFunction, Integer targetContextSensitivity, [Object contextSensitivityGuard]) -> void:
     - Makes the given function *more* context sensitive. If targetContextSensitivity is an unsigned integer then the function is parameter-sensitive in that argument position; if it is -1 then the function is object-sensitive; if it is -2 then the function "inherits" the parameter-sensitivity of the enclosing function. The optional guard can have a field named 'caller' with a value indicating from which callers the context sensitivity should apply.
+- **TAJS_makeGenericError**() -> Value:
+    - Creates an Error object.
 - **TAJS_makePartial**(String kind, String canonicalName) -> Object:
     - Creates a "partial" object of the given kind (FUNCTION, OBJECT, ARRAY) and canonical name. Partial functions cannot be invoked, and accessing properties of partial objects results in warnings.
 - **TAJS_newArray**() -> Array:
@@ -62,8 +72,14 @@
     - Allocates a new Object with a heap-sensitivity that corresponds to the current calling context.
 - **TAJS_nodeRequireResolve**(String filename, [String parent = null]) -> Value:
     - Performs NodeJS require.resolve of the module given as filename.
+- **TAJS_notInQueue**(Value value) -> void:
+    - Asserts that the object is not in the queue.
 - **TAJS_parentDir**(filename) -> Value:
     - Returns the location of the parent directory.
+- **TAJS_pending**(Queue object) -> void:
+    - Asserts that the object is in the queue in pending state.
+- **TAJS_rejectedWith**(Queue object, Value rejected value) -> void:
+    - Asserts that the object is in the queue and it is rejected with the given value.
 - **TAJS_unURL**(url) -> Value:
     - Changes a file URL to an absolute path (Str-Value), changes non-file URLs to null (Null-Value).
 
