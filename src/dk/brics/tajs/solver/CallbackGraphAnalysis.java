@@ -8,11 +8,12 @@ import java.util.stream.Collectors;
 import java.io.PrintWriter;
 
 import dk.brics.tajs.lattice.Value;
-import dk.brics.tajs.analysis.AnalysisFunction;
+
+import dk.brics.tajs.flowgraph.SourceLocation;
 
 import static dk.brics.tajs.solver.CallbackGraph.CallbackGraphNode;
 
-public class CallbackGraphAnalysis {
+public class CallbackGraphAnalysis { //TODO: refactor
 
 	private CallbackGraph cbg;
 
@@ -21,11 +22,10 @@ public class CallbackGraphAnalysis {
 	}
 
 	/**
-	 * Groups all the nodes on the CallbackGraph by {@code Q}
-	 * ({@code queueObject} field of its {@code CallbackContext}).
-	 * @return A list containing lists for each different {@code Q}
+	 * Groups all the nodes on the {@code CallbackGraph} by {@code queueObject}.
+	 * @return A list containing lists for each different {@code queueObject}
 	 */
-	private List<List<CallbackGraphNode>> groupSourceNodesByQ() {
+	private List<List<CallbackGraphNode>> groupSourceNodesByQueueObject() {
 		List<CallbackGraphNode> sourceNodes = new ArrayList<>( this.cbg.getAllCallbacks() );
 
 		List<Integer> visitedIndexes = new ArrayList<>();
@@ -72,20 +72,39 @@ public class CallbackGraphAnalysis {
 	}
 
 	/**
-	 * Given a {@code CallbackGraphNode} retrieves the line of the
-	 * associated callback.
-	 * @param n The node to get the callback line from.
-	 * @return The line of the callback invocation.
+	 * Given a {@code CallbackGraphNode} retrieves the line of
+	 * the dependent queue object.
+	 * <p>
+	 * That is: the line of the element being created by the
+	 * invocation of the associated callback. 
+	 * @param node The node to get the line from.
+	 * @return The line of the element being created by the callback invocation.
 	 */
-	private String getFunctionLineNumber( CallbackGraphNode n ) {
-		AnalysisFunction function = n.getFirst();
+	private String getDependentQueueObjectLineNumber( CallbackGraphNode node ) {
+		Value dependentQueueObject = node.getSecond().getDependentQueueObject();
 
-		if ( !function.isNative() ) {
-			return String.valueOf( function.getUserFunction().getSourceLocation().getLineNumber() );
-		} else {
-			return "??"; // TODO: find line number!
-			//throw new RuntimeException( "Native function " + function.getNativeFunction().toString() );
-		}
+		return dependentQueueObject.getObjectSourceLocations().stream()
+			.map( sl -> String.valueOf( sl.getLineNumber() ) )
+			.collect( Collectors.joining( " / " ) )
+		;
+	}
+
+	/**
+	 * Given a {@code CallbackGraphNode} retrieves the line of
+	 * the queue object.
+	 * <p>
+	 * That is: the line of the element to where this callback
+	 * was registered. 
+	 * @param n The node to get the line from.
+	 * @return The line of the element where this callback registered to.
+	 */
+	private String getQueueObjectLineNumber( CallbackGraphNode node ) {
+		Value queueObject = node.getSecond().getQueueObject();
+
+		return queueObject.getObjectSourceLocations().stream()
+			.map( sl -> String.valueOf( sl.getLineNumber() ) )
+			.collect( Collectors.joining( " / " ) )
+		;
 	}
 
 	/**
@@ -93,13 +112,13 @@ public class CallbackGraphAnalysis {
 	 * for any suspicion of broken Promises.
 	 * <p>
 	 * It operates by checking if there are multiple source nodes
-	 * with the same {@code Q}.
+	 * with the same {@code queueObject}.
 	 * @return TODO
 	 */
 	public String findBrokenPromise( PrintWriter out ) {
 		StringBuilder warnings = new StringBuilder();
 
-		List<List<CallbackGraphNode>> groupedNodesByQ = this.groupSourceNodesByQ();
+		List<List<CallbackGraphNode>> groupedNodesByQ = this.groupSourceNodesByQueueObject();
 
 		for ( List<CallbackGraphNode> groupOfNodes : groupedNodesByQ ) {
 			if ( groupOfNodes.size() > 1 ) {
@@ -108,15 +127,20 @@ public class CallbackGraphAnalysis {
 				warnings.append( "Possible Broken Promise between lines: " );
 
 				String formattedLinesNumbers = groupOfNodes.subList( 0, lastIndex ).stream()
-					.map( this::getFunctionLineNumber )
+					.map( this::getDependentQueueObjectLineNumber )
 					.collect( Collectors.joining( ", " ) )
 				;
+
+				CallbackGraphNode lastNode = groupOfNodes.get( lastIndex );
 
 				warnings
 					.append( formattedLinesNumbers )
 					.append( " and " )
-					.append( this.getFunctionLineNumber( groupOfNodes.get( lastIndex ) ) )
+					.append( this.getDependentQueueObjectLineNumber( lastNode ) )
 					.append( "!\n" )
+					.append( "Forked from line: " )
+					.append( this.getQueueObjectLineNumber( lastNode ) ) // Could be any node of this group, since all of them have the same queueObject
+					.append( ".\n" )
 				;
 			}
 		}
