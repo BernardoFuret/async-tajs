@@ -1,7 +1,7 @@
 package dk.brics.tajs.solver;
 
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
 
 import java.util.stream.Collectors;
 
@@ -9,11 +9,9 @@ import java.io.PrintWriter;
 
 import dk.brics.tajs.lattice.Value;
 
-import dk.brics.tajs.flowgraph.SourceLocation;
-
 import static dk.brics.tajs.solver.CallbackGraph.CallbackGraphNode;
 
-public class CallbackGraphAnalysis { //TODO: refactor
+public class CallbackGraphAnalysis {
 
 	private CallbackGraph cbg;
 
@@ -22,88 +20,49 @@ public class CallbackGraphAnalysis { //TODO: refactor
 	}
 
 	/**
-	 * Groups all the nodes on the {@code CallbackGraph} by {@code queueObject}.
-	 * @return A list containing lists for each different {@code queueObject}
-	 */
-	private List<List<CallbackGraphNode>> groupSourceNodesByQueueObject() {
-		List<CallbackGraphNode> sourceNodes = new ArrayList<>( this.cbg.getAllCallbacks() );
-
-		List<Integer> visitedIndexes = new ArrayList<>();
-
-		List<List<CallbackGraphNode>> allNodesWithSameQ = new ArrayList<>();
-		
-		int outerIndex = 0;
-
-		for ( CallbackGraphNode node : sourceNodes ) {
-			Value nodeQ = node.getSecond().getQueueObject();
-
-			if ( !visitedIndexes.contains( outerIndex ) && nodeQ != null ) {
-				int innerIndex = 0;
-
-				List<CallbackGraphNode> nodesWithSameQ = new ArrayList<>();
-
-				for ( CallbackGraphNode comparedNode : sourceNodes ) {
-					Value comparedNodeQ = comparedNode.getSecond().getQueueObject();
-
-					if (
-						comparedNodeQ != null
-						&&
-						!visitedIndexes.contains( innerIndex )
-						&&
-						comparedNodeQ.equals( nodeQ )
-					) {
-						nodesWithSameQ.add( comparedNode );
-
-						visitedIndexes.add( innerIndex );
-					}
-
-					innerIndex += 1;
-				}
-
-				allNodesWithSameQ.add( nodesWithSameQ );
-			}
-
-			visitedIndexes.add( outerIndex );
-			
-			outerIndex += 1;
-		}
-
-		return allNodesWithSameQ;
-	}
-
-	/**
-	 * Given a {@code CallbackGraphNode} retrieves the line of
-	 * the dependent queue object.
+	 * Groups all the nodes on the {@code CallbackGraph} through a mapping
+	 * of their {@code queueObject} to their {@code dependentQueueObject}.
 	 * <p>
-	 * That is: the line of the element being created by the
-	 * invocation of the associated callback. 
-	 * @param node The node to get the line from.
-	 * @return The line of the element being created by the callback invocation.
+	 * Several nodes may contain the same {@code queueObject}. As such, each
+	 * {@code dependentQueueObject} is grouped by the {@code queueObject}.
+	 * @return A mapping of the node's {@code queueObject} to each respective
+	 * {@code dependentQueueObject}
 	 */
-	private String getDependentQueueObjectLineNumber( CallbackGraphNode node ) {
-		Value dependentQueueObject = node.getSecond().getDependentQueueObject();
-
-		return dependentQueueObject.getObjectSourceLocations().stream()
-			.map( sl -> String.valueOf( sl.getLineNumber() ) )
-			.collect( Collectors.joining( " / " ) )
+	private Map<Value, List<Value>> groupSourceNodesByQueueObject() {
+		return this.cbg.getAllCallbacks().stream()
+			.collect(
+				Collectors.groupingBy(
+					( CallbackGraphNode n ) -> n.getSecond().getQueueObject(),
+					Collectors.mapping(
+						( CallbackGraphNode n ) -> n.getSecond().getDependentQueueObject(),
+						Collectors.toList()
+					)
+				)
+			)
 		;
 	}
 
 	/**
-	 * Given a {@code CallbackGraphNode} retrieves the line of
-	 * the queue object.
+	 * Auxiliary method to get the line number for either
+	 * a {@code queueObject} or a {@code dependentQueueObject}.
 	 * <p>
-	 * That is: the line of the element to where this callback
-	 * was registered. 
-	 * @param n The node to get the line from.
-	 * @return The line of the element where this callback registered to.
+	 * Checks if the {@code Value} has multiple locations.
+	 * @param eitherQOrR either a {@code queueObject} or a {@code dependentQueueObject}.
+	 * @return The line number for the {@code Value}.
 	 */
-	private String getQueueObjectLineNumber( CallbackGraphNode node ) {
-		Value queueObject = node.getSecond().getQueueObject();
+	private int getValueLineNumber( Value eitherQOrR ) {
+		if ( !eitherQOrR.isMaybeSingleAllocationSite() ) {
+			throw new RuntimeException/*CallbackGraphAnalysisException*/(
+				"Multiple source locations for value: " + eitherQOrR
+			);
+		}
 
-		return queueObject.getObjectSourceLocations().stream()
-			.map( sl -> String.valueOf( sl.getLineNumber() ) )
-			.collect( Collectors.joining( " / " ) )
+		return eitherQOrR.getObjectSourceLocations().stream()
+			.findFirst()
+			.orElseThrow( () -> new RuntimeException/*CallbackGraphAnalysisException*/(
+				"No source location found for value: " + eitherQOrR
+			) )
+			.getLineNumber()
 		;
 	}
 
@@ -112,40 +71,52 @@ public class CallbackGraphAnalysis { //TODO: refactor
 	 * for any suspicion of broken Promises.
 	 * <p>
 	 * It operates by checking if there are multiple source nodes
-	 * with the same {@code queueObject}.
-	 * @return TODO
+	 * with the same {@code queueObject}, indicating there are several
+	 * Promises chaining to the same Promise. 
+	 * @return String representation of the warnings issued, if any.
 	 */
 	public String findBrokenPromise( PrintWriter out ) {
-		StringBuilder warnings = new StringBuilder();
+		StringBuilder warnings = this.groupSourceNodesByQueueObject()
+			.entrySet()
+			.stream()
+			.filter( entry -> entry.getValue().size() > 1 )
+			.collect(
+				StringBuilder::new,
+				( warningsSb, entry ) -> {
+					Value queueObject = entry.getKey();
 
-		List<List<CallbackGraphNode>> groupedNodesByQ = this.groupSourceNodesByQueueObject();
+					List<Value> dependentQueueObjects = entry.getValue();
 
-		for ( List<CallbackGraphNode> groupOfNodes : groupedNodesByQ ) {
-			if ( groupOfNodes.size() > 1 ) {
-				int lastIndex = groupOfNodes.size() - 1;
+					List<String> linesNumbers = dependentQueueObjects.stream()
+						.map( this::getValueLineNumber ) // TODO: getValueLocation getColumnNumber
+						.sorted() // TODO: sort by line and then by column
+						.map( String::valueOf )
+						.collect( Collectors.toList() )
+					;
 
-				warnings.append( "Possible Broken Promise between lines: " );
+					int lastIndex = linesNumbers.size() - 1;
 
-				String formattedLinesNumbers = groupOfNodes.subList( 0, lastIndex ).stream()
-					.map( this::getDependentQueueObjectLineNumber )
-					.collect( Collectors.joining( ", " ) )
-				;
+					warningsSb
+						.append( "Possible Broken Promise between lines: " )
+						.append( String.join(
+							", ",
+							linesNumbers.subList( 0, lastIndex )
+						) )
+						.append( " and " )
+						.append( linesNumbers.get( lastIndex ) )
+						.append( "!\n" )
+						.append( "Forked from line: " )
+						.append( this.getValueLineNumber( queueObject ) )
+						.append( ".\n\n" )
+					;
+				},
+				( warningsSb, otherWarningsSb ) -> {
+					warningsSb.append( otherWarningsSb );
+				}
+			)
+		;
 
-				CallbackGraphNode lastNode = groupOfNodes.get( lastIndex );
-
-				warnings
-					.append( formattedLinesNumbers )
-					.append( " and " )
-					.append( this.getDependentQueueObjectLineNumber( lastNode ) )
-					.append( "!\n" )
-					.append( "Forked from line: " )
-					.append( this.getQueueObjectLineNumber( lastNode ) ) // Could be any node of this group, since all of them have the same queueObject
-					.append( ".\n" )
-				;
-			}
-		}
-
-        out.println( warnings );
+		out.println( warnings );
 
 		return warnings.toString();
 	}
