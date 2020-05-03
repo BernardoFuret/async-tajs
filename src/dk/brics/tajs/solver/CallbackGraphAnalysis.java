@@ -2,12 +2,15 @@ package dk.brics.tajs.solver;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 
 import java.util.stream.Collectors;
 
 import java.io.PrintWriter;
 
 import dk.brics.tajs.lattice.Value;
+
+import dk.brics.tajs.flowgraph.SourceLocation;
 
 import static dk.brics.tajs.solver.CallbackGraph.CallbackGraphNode;
 
@@ -17,6 +20,33 @@ public class CallbackGraphAnalysis {
 
 	public CallbackGraphAnalysis( CallbackGraph cbg ) {
 		this.cbg = cbg;
+	}
+
+	private static class ValueLocationPosition {
+
+		private int line;
+
+		private int column;
+
+		ValueLocationPosition( int line, int column ) {
+			this.line = line;
+			
+			this.column = column;
+		}
+
+		public int getLine() {
+			return this.line;
+		}
+
+		public int getColumn() {
+			return this.column;
+		}
+
+		@Override
+		public String toString() {
+			return this.line + ":" + this.column;
+		}
+
 	}
 
 	/**
@@ -50,20 +80,24 @@ public class CallbackGraphAnalysis {
 	 * @param eitherQOrR either a {@code queueObject} or a {@code dependentQueueObject}.
 	 * @return The line number for the {@code Value}.
 	 */
-	private int getValueLineNumber( Value eitherQOrR ) {
+	private ValueLocationPosition getValueLocation( Value eitherQOrR ) {
 		if ( !eitherQOrR.isMaybeSingleAllocationSite() ) {
 			throw new RuntimeException/*CallbackGraphAnalysisException*/(
 				"Multiple source locations for value: " + eitherQOrR
 			);
 		}
 
-		return eitherQOrR.getObjectSourceLocations().stream()
+		SourceLocation sl = eitherQOrR.getObjectSourceLocations().stream()
 			.findFirst()
 			.orElseThrow( () -> new RuntimeException/*CallbackGraphAnalysisException*/(
 				"No source location found for value: " + eitherQOrR
 			) )
-			.getLineNumber()
 		;
+
+		return new ValueLocationPosition(
+			sl.getLineNumber(),
+			sl.getColumnNumber()
+		);
 	}
 
 	/**
@@ -88,8 +122,12 @@ public class CallbackGraphAnalysis {
 					List<Value> dependentQueueObjects = entry.getValue();
 
 					List<String> linesNumbers = dependentQueueObjects.stream()
-						.map( this::getValueLineNumber ) // TODO: getValueLocation getColumnNumber
-						.sorted() // TODO: sort by line and then by column
+						.map( this::getValueLocation )
+						.sorted(
+							Comparator
+								.comparing( ValueLocationPosition::getLine )
+								.thenComparing( ValueLocationPosition::getColumn )
+						)
 						.map( String::valueOf )
 						.collect( Collectors.toList() )
 					;
@@ -97,7 +135,7 @@ public class CallbackGraphAnalysis {
 					int lastIndex = linesNumbers.size() - 1;
 
 					warningsSb
-						.append( "Possible Broken Promise between lines: " )
+						.append( "Possible Broken Promise between positions: " )
 						.append( String.join(
 							", ",
 							linesNumbers.subList( 0, lastIndex )
@@ -105,8 +143,8 @@ public class CallbackGraphAnalysis {
 						.append( " and " )
 						.append( linesNumbers.get( lastIndex ) )
 						.append( "!\n" )
-						.append( "Forked from line: " )
-						.append( this.getValueLineNumber( queueObject ) )
+						.append( "Forked from position: " )
+						.append( this.getValueLocation( queueObject ) )
 						.append( ".\n\n" )
 					;
 				},
