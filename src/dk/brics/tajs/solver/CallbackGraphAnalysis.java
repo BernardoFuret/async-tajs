@@ -121,7 +121,7 @@ public class CallbackGraphAnalysis {
 
 					List<Value> dependentQueueObjects = entry.getValue();
 
-					List<String> linesNumbers = dependentQueueObjects.stream()
+					List<String> positions = dependentQueueObjects.stream()
 						.map( this::getValueLocation )
 						.sorted(
 							Comparator
@@ -132,16 +132,16 @@ public class CallbackGraphAnalysis {
 						.collect( Collectors.toList() )
 					;
 
-					int lastIndex = linesNumbers.size() - 1;
+					int lastIndex = positions.size() - 1;
 
 					warningsSb
 						.append( "Possible Broken Promise between positions: " )
 						.append( String.join(
 							", ",
-							linesNumbers.subList( 0, lastIndex )
+							positions.subList( 0, lastIndex )
 						) )
 						.append( " and " )
-						.append( linesNumbers.get( lastIndex ) )
+						.append( positions.get( lastIndex ) )
 						.append( "!\n" )
 						.append( "Forked from position: " )
 						.append( this.getValueLocation( queueObject ) )
