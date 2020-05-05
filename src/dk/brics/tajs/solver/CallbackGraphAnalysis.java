@@ -12,6 +12,8 @@ import dk.brics.tajs.lattice.Value;
 
 import dk.brics.tajs.flowgraph.SourceLocation;
 
+import dk.brics.tajs.util.CallbackGraphAnalysisException;
+
 import static dk.brics.tajs.solver.CallbackGraph.CallbackGraphNode;
 
 public class CallbackGraphAnalysis {
@@ -82,14 +84,14 @@ public class CallbackGraphAnalysis {
 	 */
 	private ValueLocationPosition getValueLocation( Value eitherQOrR ) {
 		if ( !eitherQOrR.isMaybeSingleAllocationSite() ) {
-			throw new RuntimeException/*CallbackGraphAnalysisException*/(
+			throw new CallbackGraphAnalysisException(
 				"Multiple source locations for value: " + eitherQOrR
 			);
 		}
 
 		SourceLocation sl = eitherQOrR.getObjectSourceLocations().stream()
 			.findFirst()
-			.orElseThrow( () -> new RuntimeException/*CallbackGraphAnalysisException*/(
+			.orElseThrow( () -> new CallbackGraphAnalysisException(
 				"No source location found for value: " + eitherQOrR
 			) )
 		;
@@ -148,9 +150,7 @@ public class CallbackGraphAnalysis {
 						.append( ".\n\n" )
 					;
 				},
-				( warningsSb, otherWarningsSb ) -> {
-					warningsSb.append( otherWarningsSb );
-				}
+				StringBuilder::append
 			)
 		;
 
