@@ -74,7 +74,7 @@ import dk.brics.tajs.options.Options;
 import dk.brics.tajs.solver.BlockAndContext;
 import dk.brics.tajs.solver.CallGraph;
 import dk.brics.tajs.solver.CallbackGraph;
-import dk.brics.tajs.solver.CallbackGraphAnalysis; // TODO
+import dk.brics.tajs.solver.CallbackGraphAnalysis;
 import dk.brics.tajs.solver.Message;
 import dk.brics.tajs.solver.Message.Severity;
 import dk.brics.tajs.solver.Message.Status;
@@ -715,10 +715,13 @@ public class Monitoring implements IAnalysisMonitoring {
             } catch (IOException e) {
                 log.error("Unable to write " + filename + ": " + e.getMessage());
             }
+        }
 
-            // TODO: delete this when Options is ready.
+        if (Options.get().isCallbackGraphAnalysisEnabled()) {
             CallbackGraphAnalysis cbga = new CallbackGraphAnalysis(callbackGraph); // TODO: reuse for each different analysis (broken Promise, etc.)
+
             String analysisFilename = "out" + File.separator + "callbackgraphAnalysis.txt";
+            
             try (FileWriter f = new FileWriter(analysisFilename)) {
                 log.info("Writing callback graph analysis to " + analysisFilename);
 
@@ -728,11 +731,6 @@ public class Monitoring implements IAnalysisMonitoring {
             } catch (IOException e) {
                 log.error("Unable to write " + analysisFilename + ": " + e.getMessage());
             }
-            // TODO: END OF: delete this when Options is ready.
-
-            /*if ( Options.get().performCallbackGraphDebug() ) {
-                // TODO
-            }*/
         }
     }
 

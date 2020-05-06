@@ -272,6 +272,9 @@ public class OptionValues {
     @Option(name = "-print-callback-graph", usage = "Prints callback graph")
     private boolean printCallbackGraph;
 
+    @Option(name = "-callback-graph-analysis", usage = "Prints callback graph analysis to detect possible race conditions")
+    private boolean callbackGraphAnalysis; // TODO: allow choosing which case to track (e.g.: only Broken Promise, etc.).
+
     @Option(name = "-list-bounded-size", usage = "The bounded size of the lists")
     private int boundedSize = 100;
 
@@ -359,6 +362,7 @@ public class OptionValues {
         if (printCallbackGraph != that.printCallbackGraph) return false;
         if (boundedSize != that.boundedSize) return false;
         if (callbackGraphStats != that.callbackGraphStats) return false;
+        if (callbackGraphAnalysis != that.callbackGraphAnalysis) return false;
         if (inspector != that.inspector) return false;
         if (unsoundnessString != null ? !unsoundnessString.equals(that.unsoundnessString) : that.unsoundnessString != null)
             return false;
@@ -446,6 +450,7 @@ public class OptionValues {
         result = 31 * result + (arguments != null ? arguments.hashCode() : 0);
         result = 31 * result + (noCallbackSensitivity ? 1 : 0);
         result = 31 * result + (callbackGraphStats ? 1 : 0);
+        result = 31 * result + (callbackGraphAnalysis ? 1 : 0);
         result = 31 * result + (printCallbackGraph ? 1 : 0);
         result = 31 * result + boundedSize;
         result = 31 * result + (soundnessTesterOptions != null ? soundnessTesterOptions.hashCode() : 0);
@@ -1300,6 +1305,18 @@ public class OptionValues {
 
     public void disableCallbackGraphStats() {
         this.callbackGraphStats = false;
+    }
+
+    public boolean isCallbackGraphAnalysisEnabled() {
+        return this.callbackGraphAnalysis;
+    }
+
+    public void enableCallbackGraphAnalysis() {
+        this.callbackGraphAnalysis = true;
+    }
+
+    public void disableCallbackGraphAnalysis() {
+        this.callbackGraphAnalysis = false;
     }
 
     public int getAllocationsNumber() {
