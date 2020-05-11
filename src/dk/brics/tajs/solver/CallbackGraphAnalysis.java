@@ -62,6 +62,7 @@ public class CallbackGraphAnalysis {
 	 */
 	private Map<Value, List<Value>> groupSourceNodesByQueueObject() {
 		return this.cbg.getAllCallbacks().stream()
+			.filter( n -> !n.getSecond().getQueueObject().getObjectLabelUnique().isHostObject() )
 			.collect(
 				Collectors.groupingBy(
 					( CallbackGraphNode n ) -> n.getSecond().getQueueObject(),
