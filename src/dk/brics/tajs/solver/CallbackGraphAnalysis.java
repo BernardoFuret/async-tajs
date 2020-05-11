@@ -24,7 +24,7 @@ public class CallbackGraphAnalysis {
 		this.cbg = cbg;
 	}
 
-	private static class ValueLocationPosition {
+	private static class ValueLocationPosition implements Comparable<ValueLocationPosition> {
 
 		private int line;
 
@@ -49,6 +49,15 @@ public class CallbackGraphAnalysis {
 
 		public int getColumn() {
 			return this.column;
+		}
+
+		@Override
+		public int compareTo( ValueLocationPosition other ) {
+			return Comparator
+				.comparing( ValueLocationPosition::getLine )
+				.thenComparing( ValueLocationPosition::getColumn )
+				.compare( this, other )
+			;
 		}
 
 		@Override
@@ -119,11 +128,7 @@ public class CallbackGraphAnalysis {
 
 					List<String> positions = dependentQueueObjects.stream()
 						.map( this::getValueLocation )
-						.sorted(
-							Comparator
-								.comparing( ValueLocationPosition::getLine )
-								.thenComparing( ValueLocationPosition::getColumn )
-						)
+						.sorted()
 						.map( String::valueOf )
 						.collect( Collectors.toList() )
 					;
