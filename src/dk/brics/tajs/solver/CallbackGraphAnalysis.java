@@ -36,6 +36,13 @@ public class CallbackGraphAnalysis {
 			this.column = column;
 		}
 
+		ValueLocationPosition( SourceLocation sl ) {
+			this(
+				sl.getLineNumber(),
+				sl.getColumnNumber()
+			);
+		}
+
 		public int getLine() {
 			return this.line;
 		}
@@ -76,31 +83,17 @@ public class CallbackGraphAnalysis {
 	}
 
 	/**
-	 * Auxiliary method to get the line number for either
+	 * Auxiliary method to get the position for either
 	 * a {@code queueObject} or a {@code dependentQueueObject}.
 	 * <p>
 	 * Checks if the {@code Value} has multiple locations.
 	 * @param eitherQOrR either a {@code queueObject} or a {@code dependentQueueObject}.
-	 * @return The line number for the {@code Value}.
+	 * @return The position for the {@code Value}.
 	 */
 	private ValueLocationPosition getValueLocation( Value eitherQOrR ) {
-		if ( !eitherQOrR.isMaybeSingleAllocationSite() ) {
-			throw new CallbackGraphAnalysisException(
-				"Multiple source locations for value: " + eitherQOrR
-			);
-		}
+		SourceLocation sl = eitherQOrR.getObjectLabelUnique().getSourceLocation();
 
-		SourceLocation sl = eitherQOrR.getObjectSourceLocations().stream()
-			.findFirst()
-			.orElseThrow( () -> new CallbackGraphAnalysisException(
-				"No source location found for value: " + eitherQOrR
-			) )
-		;
-
-		return new ValueLocationPosition(
-			sl.getLineNumber(),
-			sl.getColumnNumber()
-		);
+		return new ValueLocationPosition( sl );
 	}
 
 	/**
