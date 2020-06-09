@@ -1,7 +1,9 @@
 package dk.brics.tajs.solver;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 import java.util.Comparator;
 
 import java.util.stream.Collectors;
@@ -76,7 +78,7 @@ public class CallbackGraphAnalysis {
 	 * @return A mapping of the node's {@code queueObject} to each respective
 	 * {@code dependentQueueObject}
 	 */
-	private Map<Value, List<Value>> groupSourceNodesByQueueObject() {
+	private Map<Value, Set<Value>> groupSourceNodesByQueueObject() {
 		return this.cbg.getAllCallbacks().stream()
 			.filter( n -> !n.getSecond().getQueueObject().getObjectLabelUnique().isHostObject() )
 			.collect(
@@ -84,7 +86,7 @@ public class CallbackGraphAnalysis {
 					( CallbackGraphNode n ) -> n.getSecond().getQueueObject(),
 					Collectors.mapping(
 						( CallbackGraphNode n ) -> n.getSecond().getDependentQueueObject(),
-						Collectors.toList()
+						Collectors.toSet()
 					)
 				)
 			)
@@ -114,7 +116,7 @@ public class CallbackGraphAnalysis {
 	 * Promises chaining to the same Promise. 
 	 * @return String representation of the warnings issued, if any.
 	 */
-	public String findBrokenPromise( PrintWriter out ) {
+	public String findBrokenPromise( PrintWriter out ) { // TODO: sort log lines
 		StringBuilder warnings = this.groupSourceNodesByQueueObject()
 			.entrySet()
 			.stream()
@@ -124,7 +126,7 @@ public class CallbackGraphAnalysis {
 				( warningsSb, entry ) -> {
 					Value queueObject = entry.getKey();
 
-					List<Value> dependentQueueObjects = entry.getValue();
+					List<Value> dependentQueueObjects = new ArrayList<>( entry.getValue() );
 
 					List<String> positions = dependentQueueObjects.stream()
 						.map( this::getValueLocation )
