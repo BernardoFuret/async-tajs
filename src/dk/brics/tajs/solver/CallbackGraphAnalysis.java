@@ -116,11 +116,18 @@ public class CallbackGraphAnalysis {
 	 * Promises chaining to the same Promise. 
 	 * @return String representation of the warnings issued, if any.
 	 */
-	public String findBrokenPromise( PrintWriter out ) { // TODO: sort log lines
+	public String findBrokenPromise( PrintWriter out ) {
 		StringBuilder warnings = this.groupSourceNodesByQueueObject()
 			.entrySet()
 			.stream()
 			.filter( entry -> entry.getValue().size() > 1 )
+			.sorted( ( e1, e2 ) -> {
+				ValueLocationPosition e1p = this.getValueLocation( e1.getKey() );
+
+				ValueLocationPosition e2p = this.getValueLocation( e2.getKey() );
+				
+				return e1p.compareTo( e2p );
+			} )
 			.collect(
 				StringBuilder::new,
 				( warningsSb, entry ) -> {
