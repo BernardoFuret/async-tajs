@@ -39,10 +39,7 @@ public class CallbackGraphAnalysis {
 		}
 
 		ValueLocationPosition( SourceLocation sl ) {
-			this(
-				sl.getLineNumber(),
-				sl.getColumnNumber()
-			);
+			this( sl.getLineNumber(), sl.getColumnNumber() );
 		}
 
 		public int getLine() {
@@ -101,7 +98,7 @@ public class CallbackGraphAnalysis {
 	 * @param eitherQOrR either a {@code queueObject} or a {@code dependentQueueObject}.
 	 * @return The position for the {@code Value}.
 	 */
-	private ValueLocationPosition getValueLocation( Value eitherQOrR ) {
+	private ValueLocationPosition getValueLocationPosition( Value eitherQOrR ) {
 		SourceLocation sl = eitherQOrR.getObjectLabelUnique().getSourceLocation();
 
 		return new ValueLocationPosition( sl );
@@ -122,9 +119,9 @@ public class CallbackGraphAnalysis {
 			.stream()
 			.filter( entry -> entry.getValue().size() > 1 )
 			.sorted( ( e1, e2 ) -> {
-				ValueLocationPosition e1p = this.getValueLocation( e1.getKey() );
+				ValueLocationPosition e1p = this.getValueLocationPosition( e1.getKey() );
 
-				ValueLocationPosition e2p = this.getValueLocation( e2.getKey() );
+				ValueLocationPosition e2p = this.getValueLocationPosition( e2.getKey() );
 				
 				return e1p.compareTo( e2p );
 			} )
@@ -136,7 +133,7 @@ public class CallbackGraphAnalysis {
 					List<Value> dependentQueueObjects = new ArrayList<>( entry.getValue() );
 
 					List<String> positions = dependentQueueObjects.stream()
-						.map( this::getValueLocation )
+						.map( this::getValueLocationPosition )
 						.sorted()
 						.map( String::valueOf )
 						.collect( Collectors.toList() )
@@ -154,7 +151,7 @@ public class CallbackGraphAnalysis {
 						.append( positions.get( lastIndex ) )
 						.append( "!\n" )
 						.append( "Forked from position: " )
-						.append( this.getValueLocation( queueObject ) )
+						.append( this.getValueLocationPosition( queueObject ) )
 						.append( ".\n\n" )
 					;
 				},
